@@ -14,39 +14,48 @@ export default function Auth() {
   useEffect(() => {
     // Check if we're returning from OAuth callback
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    const userData = urlParams.get('user');
     
-    if (code) {
-      handleAuthCallback(code);
-    }
-  }, []);
-
-  const handleAuthCallback = async (code: string) => {
-    setIsLoading(true);
-    try {
-      const response = await apiRequest('POST', '/api/auth/callback', { code });
-      const data = await response.json();
+    if (success && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData));
+        localStorage.setItem('user', JSON.stringify(user));
+        toast({
+          title: "Authentication successful",
+          description: "You have been successfully authenticated with Gmail.",
+        });
+        setLocation('/dashboard');
+      } catch (err) {
+        console.error('Error parsing user data:', err);
+        toast({
+          title: "Authentication error",
+          description: "Failed to process authentication data.",
+          variant: "destructive",
+        });
+      }
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        'no_code': 'No authorization code received from Google.',
+        'auth_failed': 'Authentication failed. Please try again.',
+        'access_denied': 'Access was denied. Please grant permissions to continue.',
+      };
       
-      // Store user data in localStorage
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      toast({
-        title: "Authentication successful",
-        description: "You have been successfully authenticated with Gmail.",
-      });
-      
-      setLocation('/dashboard');
-    } catch (error) {
-      console.error('Auth callback error:', error);
       toast({
         title: "Authentication failed",
-        description: "Failed to authenticate with Gmail. Please try again.",
+        description: errorMessages[error] || 'An unknown error occurred during authentication.',
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
+    
+    // Clean up URL parameters
+    if (success || error) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [setLocation, toast]);
+
+
 
   const handleSignIn = async () => {
     setIsLoading(true);

@@ -17,6 +17,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Handle OAuth callback from Google (GET request with code in query params)
+  app.get("/api/auth/callback", async (req, res) => {
+    try {
+      const { code, error } = req.query;
+      
+      if (error) {
+        console.error("OAuth error:", error);
+        return res.redirect("/auth?error=" + encodeURIComponent(error as string));
+      }
+      
+      if (!code) {
+        return res.redirect("/auth?error=no_code");
+      }
+
+      const tokens = await GmailService.getTokens(code as string);
+      const userInfo = await GmailService.getUserInfo(tokens.access_token!);
+
+      let user = await storage.getUserByEmail(userInfo.email!);
+      if (!user) {
+        user = await storage.createUser({ email: userInfo.email! });
+      }
+
+      await storage.updateUser(user.id, {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+      });
+
+      // Redirect to dashboard with user data as URL params (temporary solution)
+      const userData = encodeURIComponent(JSON.stringify(user));
+      res.redirect(`/auth?success=true&user=${userData}`);
+    } catch (error) {
+      console.error("Error in auth callback:", error);
+      res.redirect("/auth?error=auth_failed");
+    }
+  });
+
+  // Keep POST endpoint for frontend callback handling
   app.post("/api/auth/callback", async (req, res) => {
     try {
       const { code } = req.body;
