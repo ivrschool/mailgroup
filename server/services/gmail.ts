@@ -45,8 +45,18 @@ export class GmailService {
   }
 
   static async getUserInfo(accessToken: string) {
-    oauth2Client.setCredentials({ access_token: accessToken });
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    // Create a separate OAuth2 client instance for this request
+    const tempRedirectUri = process.env.GOOGLE_REDIRECT_URI || 
+      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/callback` : "http://localhost:5000/api/auth/callback");
+    
+    const tempOAuthClient = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID || process.env.GMAIL_CLIENT_ID || "default_client_id",
+      process.env.GOOGLE_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET || "default_client_secret",
+      tempRedirectUri
+    );
+    tempOAuthClient.setCredentials({ access_token: accessToken });
+    
+    const oauth2 = google.oauth2({ version: 'v2', auth: tempOAuthClient });
     const { data } = await oauth2.userinfo.get();
     return data;
   }

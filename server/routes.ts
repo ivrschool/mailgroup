@@ -32,6 +32,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const tokens = await GmailService.getTokens(code as string);
+      console.log('Tokens received:', { 
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        expiryDate: tokens.expiry_date 
+      });
+      
+      if (!tokens.access_token) {
+        throw new Error('No access token received from Google');
+      }
+      
       const userInfo = await GmailService.getUserInfo(tokens.access_token!);
 
       let user = await storage.getUserByEmail(userInfo.email!);
