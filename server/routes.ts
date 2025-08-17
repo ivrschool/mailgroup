@@ -96,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clusterMap = ClusteringService.clusterEmails(storedEmails);
       const clusters = [];
 
-      for (const [template, emails] of clusterMap.entries()) {
+      for (const [template, emails] of Array.from(clusterMap.entries())) {
         if (emails.length > 0) {
           const cluster = await storage.createCluster({
             userId,

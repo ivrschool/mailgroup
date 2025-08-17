@@ -79,6 +79,12 @@ export class MemStorage implements IStorage {
     const email: Email = {
       ...insertEmail,
       id,
+      clusterId: insertEmail.clusterId || null,
+      subject: insertEmail.subject || null,
+      sender: insertEmail.sender || null,
+      snippet: insertEmail.snippet || null,
+      timestamp: insertEmail.timestamp || null,
+      isArchived: insertEmail.isArchived || false,
       createdAt: new Date(),
     };
     this.emails.set(id, email);
@@ -95,7 +101,8 @@ export class MemStorage implements IStorage {
   }
 
   async deleteEmailsByUserId(userId: string): Promise<void> {
-    for (const [id, email] of this.emails.entries()) {
+    const emailEntries = Array.from(this.emails.entries());
+    for (const [id, email] of emailEntries) {
       if (email.userId === userId) {
         this.emails.delete(id);
       }
@@ -103,7 +110,8 @@ export class MemStorage implements IStorage {
   }
 
   async archiveEmailsByClusterId(clusterId: string): Promise<void> {
-    for (const [id, email] of this.emails.entries()) {
+    const emailEntries = Array.from(this.emails.entries());
+    for (const [id, email] of emailEntries) {
       if (email.clusterId === clusterId) {
         this.emails.set(id, { ...email, isArchived: true });
       }
@@ -127,6 +135,9 @@ export class MemStorage implements IStorage {
     const cluster: Cluster = {
       ...insertCluster,
       id,
+      description: insertCluster.description || null,
+      color: insertCluster.color || null,
+      emailCount: insertCluster.emailCount || 0,
       createdAt: new Date(),
     };
     this.clusters.set(id, cluster);
@@ -143,7 +154,8 @@ export class MemStorage implements IStorage {
   }
 
   async deleteClustersByUserId(userId: string): Promise<void> {
-    for (const [id, cluster] of this.clusters.entries()) {
+    const clusterEntries = Array.from(this.clusters.entries());
+    for (const [id, cluster] of clusterEntries) {
       if (cluster.userId === userId) {
         this.clusters.delete(id);
       }

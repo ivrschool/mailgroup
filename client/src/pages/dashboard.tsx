@@ -26,12 +26,16 @@ export default function Dashboard() {
     setUser(JSON.parse(userData));
   }, [setLocation]);
 
-  const { data: clusters = [], isLoading: clustersLoading } = useQuery({
+  const { data: clusters = [], isLoading: clustersLoading } = useQuery<ClusterWithEmails[]>({
     queryKey: ['/api/clusters', user?.id],
     enabled: !!user?.id,
   });
 
-  const { data: stats = { totalEmails: 0, clusterCount: 0, lastUpdated: new Date().toISOString() } } = useQuery({
+  const { data: stats = { totalEmails: 0, clusterCount: 0, lastUpdated: new Date().toISOString() } } = useQuery<{
+    totalEmails: number;
+    clusterCount: number;
+    lastUpdated: string;
+  }>({
     queryKey: ['/api/stats', user?.id],
     enabled: !!user?.id,
   });
@@ -150,7 +154,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {clusters.map((cluster: ClusterWithEmails) => (
+                {clusters.map((cluster) => (
                   <ClusterCard
                     key={cluster.id}
                     cluster={cluster}
