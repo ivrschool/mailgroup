@@ -29,6 +29,8 @@ export class GmailService {
 
   static getAuthUrl(): string {
     const scopes = [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/gmail.modify'
     ];
@@ -45,20 +47,25 @@ export class GmailService {
   }
 
   static async getUserInfo(accessToken: string) {
-    // Create a separate OAuth2 client instance for this request
-    const tempRedirectUri = process.env.GOOGLE_REDIRECT_URI || 
-      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/callback` : "http://localhost:5000/api/auth/callback");
-    
-    const tempOAuthClient = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID || process.env.GMAIL_CLIENT_ID || "default_client_id",
-      process.env.GOOGLE_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET || "default_client_secret",
-      tempRedirectUri
-    );
-    tempOAuthClient.setCredentials({ access_token: accessToken });
-    
-    const oauth2 = google.oauth2({ version: 'v2', auth: tempOAuthClient });
-    const { data } = await oauth2.userinfo.get();
-    return data;
+    try {
+      // Use direct HTTP request to avoid OAuth client issues
+      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+      throw error;
+    }
   }
 
   async getRecentEmails(maxResults: number = 200): Promise<GmailEmail[]> {

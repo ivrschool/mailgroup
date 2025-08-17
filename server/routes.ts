@@ -43,6 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userInfo = await GmailService.getUserInfo(tokens.access_token!);
+      console.log('User info retrieved:', { email: userInfo.email, hasEmail: !!userInfo.email });
 
       let user = await storage.getUserByEmail(userInfo.email!);
       if (!user) {
