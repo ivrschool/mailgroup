@@ -2,6 +2,14 @@
 
 This is an email management application that automatically clusters and triages Gmail emails for better inbox organization. The system integrates with Gmail via OAuth, fetches user emails, and groups them into smart clusters based on content patterns and sender information. Users can view clustered emails and archive entire clusters to maintain a clean inbox.
 
+## Recent Changes
+
+- **January 2025**: Added comprehensive README.md with educational license to ivrschool.ai
+- **Authentication Improvements**: Fixed OAuth flow with proper scopes and error handling
+- **Demo Mode**: Added sample data functionality for testing without Gmail API
+- **Cluster Details Modal**: Implemented detailed email view with "View All" functionality
+- **Error Handling**: Enhanced Gmail API error messages with direct enable links
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
