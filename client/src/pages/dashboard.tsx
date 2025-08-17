@@ -5,6 +5,7 @@ import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { ClusterCard } from "@/components/cluster-card";
 import { ConfirmationModal } from "@/components/confirmation-modal";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { User, ClusterWithEmails } from "@shared/schema";
@@ -54,13 +55,28 @@ export default function Dashboard() {
         description: "Your emails have been refreshed and re-clustered.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Sync error:', error);
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync emails. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Check if it's a Gmail API not enabled error
+      if (error.message?.includes('Gmail API not enabled') || error.response?.data?.action === 'enable_gmail_api') {
+        toast({
+          title: "Gmail API Required",
+          description: "Enable Gmail API in Google Cloud Console. Check the browser console for the direct link.",
+          variant: "destructive",
+        });
+        
+        // Log the direct enable URL to console
+        const enableUrl = error.response?.data?.enableUrl || "https://console.developers.google.com/apis/api/gmail.googleapis.com";
+        console.log(`🔧 Enable Gmail API here: ${enableUrl}`);
+        console.log("After enabling, wait 2-3 minutes then try 'Refresh Analysis' again.");
+      } else {
+        toast({
+          title: "Sync failed",
+          description: "Failed to sync emails. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -89,6 +105,30 @@ export default function Dashboard() {
     },
   });
 
+  const loadDemoMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('No user');
+      const response = await apiRequest('POST', `/api/emails/demo/${user.id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clusters', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats', user?.id] });
+      toast({
+        title: "Demo loaded",
+        description: "Sample emails have been clustered to show you how the app works.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Demo load error:', error);
+      toast({
+        title: "Demo failed",
+        description: "Failed to load demo data.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSignOut = () => {
     localStorage.removeItem('user');
     setLocation('/auth');
@@ -96,6 +136,10 @@ export default function Dashboard() {
 
   const handleRefresh = () => {
     syncEmailsMutation.mutate();
+  };
+
+  const handleLoadDemo = () => {
+    loadDemoMutation.mutate();
   };
 
   const handleArchiveCluster = (cluster: ClusterWithEmails) => {
@@ -149,8 +193,25 @@ export default function Dashboard() {
               <div className="text-center py-12">
                 <p className="text-gmail-gray mb-4">No email clusters found.</p>
                 <p className="text-gmail-gray text-sm mb-6">
-                  Click "Refresh Analysis" to sync your emails and create clusters.
+                  Click "Refresh Analysis" to sync your emails, or try the demo to see how clustering works.
                 </p>
+                <div className="flex justify-center gap-3">
+                  <Button 
+                    onClick={handleRefresh}
+                    disabled={syncEmailsMutation.isPending}
+                    data-testid="button-refresh-analysis"
+                  >
+                    {syncEmailsMutation.isPending ? "Syncing..." : "Refresh Analysis"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleLoadDemo}
+                    disabled={loadDemoMutation.isPending}
+                    data-testid="button-load-demo"
+                  >
+                    {loadDemoMutation.isPending ? "Loading..." : "Try Demo"}
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">

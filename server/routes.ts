@@ -118,7 +118,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const gmailService = new GmailService(user.accessToken);
-      const gmailEmails = await gmailService.getRecentEmails(200);
+      let gmailEmails;
+      
+      try {
+        gmailEmails = await gmailService.getRecentEmails(200);
+      } catch (error) {
+        if (error.message?.includes('Gmail API has not been used') || error.message?.includes('disabled')) {
+          return res.status(403).json({ 
+            message: "Gmail API not enabled", 
+            details: "Please enable the Gmail API in Google Cloud Console and try again. Click the link in the error to enable it.",
+            action: "enable_gmail_api",
+            enableUrl: `https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=${process.env.GOOGLE_CLIENT_ID?.split('-')[0] || '934711419323'}`
+          });
+        }
+        throw error;
+      }
 
       // Clear existing emails and clusters
       await storage.deleteEmailsByUserId(userId);
@@ -193,6 +207,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching clusters:", error);
       res.status(500).json({ message: "Failed to fetch clusters" });
+    }
+  });
+
+  // Demo mode - show sample clustered emails
+  app.post("/api/emails/demo/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Create demo emails
+      const demoEmails = [
+        // Work emails
+        { id: nanoid(), subject: "Q4 Planning Meeting Tomorrow", from: "manager@company.com", snippet: "Please prepare your quarterly reports...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2) },
+        { id: nanoid(), subject: "RE: Project Update", from: "team@company.com", snippet: "Thanks for the update on the new feature...", isRead: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4) },
+        { id: nanoid(), subject: "Sprint Review Notes", from: "scrum@company.com", snippet: "Action items from today's sprint review...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8) },
+        
+        // Newsletter emails  
+        { id: nanoid(), subject: "TechCrunch Daily: AI Breakthrough", from: "newsletters@techcrunch.com", snippet: "Today's top tech stories including...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12) },
+        { id: nanoid(), subject: "Morning Brew: Market Updates", from: "crew@morningbrew.com", snippet: "Stock futures are up this morning...", isRead: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24) },
+        
+        // Financial emails
+        { id: nanoid(), subject: "Your Credit Card Statement is Ready", from: "statements@bank.com", snippet: "Your December statement is now available...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 16) },
+        { id: nanoid(), subject: "Payment Confirmation - $89.99", from: "billing@service.com", snippet: "Thank you for your payment of $89.99...", isRead: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20) },
+        
+        // Social emails
+        { id: nanoid(), subject: "John shared a photo with you", from: "notifications@instagram.com", snippet: "John posted a new photo from vacation...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6) },
+        { id: nanoid(), subject: "You have 3 new connections", from: "invitations@linkedin.com", snippet: "Connect with professionals in your network...", isRead: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10) },
+        
+        // Shopping emails
+        { id: nanoid(), subject: "Your Amazon order has shipped", from: "shipment-tracking@amazon.com", snippet: "Your order #123-4567890 has been shipped...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 14) },
+        { id: nanoid(), subject: "Flash Sale: 50% Off Everything", from: "deals@retailer.com", snippet: "Limited time offer - save big on your favorites...", isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18) }
+      ];
+
+      // Clear existing demo data
+      await storage.deleteEmailsByUserId(userId);
+      
+      // Store demo emails
+      for (const emailData of demoEmails) {
+        await storage.createEmail({
+          ...emailData,
+          userId,
+          clusterId: null,
+        });
+      }
+
+      // Cluster the demo emails
+      const emails = await storage.getEmailsByUserId(userId);
+      const clusteringService = new ClusteringService();
+      const clusters = await clusteringService.clusterEmails(emails);
+      
+      // Store clusters and update emails
+      for (const clusterData of clusters) {
+        const cluster = await storage.createCluster({
+          name: clusterData.name,
+          description: clusterData.description,
+          userId,
+        });
+        
+        for (const email of clusterData.emails) {
+          await storage.updateEmail(email.id, { clusterId: cluster.id });
+        }
+      }
+
+      res.json({ 
+        message: "Demo data loaded successfully", 
+        emailCount: demoEmails.length,
+        clusterCount: clusters.length 
+      });
+    } catch (error) {
+      console.error("Error creating demo data:", error);
+      res.status(500).json({ message: "Failed to create demo data" });
     }
   });
 
