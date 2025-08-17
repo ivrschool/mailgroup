@@ -5,6 +5,7 @@ import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { ClusterCard } from "@/components/cluster-card";
 import { ConfirmationModal } from "@/components/confirmation-modal";
+import { ClusterDetailsModal } from "@/components/cluster-details-modal";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<ClusterWithEmails | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -154,8 +156,8 @@ export default function Dashboard() {
   };
 
   const handleViewCluster = (cluster: ClusterWithEmails) => {
-    // TODO: Navigate to detailed cluster view
-    console.log('View cluster:', cluster.name);
+    setSelectedCluster(cluster);
+    setShowDetailsModal(true);
   };
 
   if (!user) {
@@ -238,6 +240,16 @@ export default function Dashboard() {
         onConfirm={handleConfirmArchive}
         cluster={selectedCluster}
         isLoading={archiveClusterMutation.isPending}
+      />
+
+      <ClusterDetailsModal
+        cluster={selectedCluster}
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedCluster(null);
+        }}
+        onArchiveCluster={handleArchiveCluster}
       />
     </div>
   );
