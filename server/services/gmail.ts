@@ -1,10 +1,13 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 
+const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
+  (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/callback` : "http://localhost:5000/api/auth/callback");
+
 const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID || process.env.GMAIL_CLIENT_ID || "default_client_id",
   process.env.GOOGLE_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET || "default_client_secret",
-  process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/auth/callback"
+  redirectUri
 );
 
 export interface GmailEmail {
